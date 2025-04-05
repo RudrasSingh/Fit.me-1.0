@@ -3,6 +3,7 @@ import requests
 from typing import Optional
 import os
 from dotenv import load_dotenv
+import json
 load_dotenv()
 
 BASE_API_URL = "https://api.langflow.astra.datastax.com"
@@ -10,13 +11,33 @@ LANGFLOW_ID = "6d6e7223-56b9-4f20-b1da-6b99fbbb0bbf"
 APPLICATION_TOKEN = os.getenv("APPLICATION_TOKEN")
 # ENDPOINT = "nutrition" # The endpoint name of the flow
 
+def dict_to_str(obj, level=0):
+    strings = []
+    indent = "  " * level  # Indentation for nested levels
+    
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if isinstance(value, (dict, list)):
+                nested_string = dict_to_str(value, level + 1)
+                strings.append(f"{indent}{key}: {nested_string}")
+            else:
+                strings.append(f"{indent}{key}: {value}")
+    elif isinstance(obj, list):
+        for idx, item in enumerate(obj):
+            nested_string = dict_to_str(item, level + 1)
+            strings.append(f"{indent}Item {idx + 1}: {nested_string}")
+    else:
+        strings.append(f"{indent}{obj}")
+
+    return ", ".join(strings)
+
 def askAi(profile,question):
   TWEAKS = {
     "TextInput-sBUdF": {
       "input_value": question
     },
     "TextInput-tLIH3": {
-      "input_value": profile
+      "input_value": dict_to_str(profile)
     }
   }
 
@@ -33,10 +54,10 @@ def askAi(profile,question):
 def get_macros(profile,goals):
   TWEAKS = {
       "TextInput-0xWcf": {
-        "input_value": goals
+        "input_value": ", ".join(goals)
       },
       "TextInput-PXcMS": {
-        "input_value": profile
+        "input_value": dict_to_str(profile)
       }
     }
 
@@ -62,8 +83,7 @@ def run_flow(message: str,
         headers = {"Authorization": "Bearer " + application_token, "Content-Type": "application/json"}
     response = requests.post(api_url, json=payload, headers=headers)
     
-    return response.json()["outputs"][0]["outputs"][0]["results"]["text"]["data"]["text"]
+    return json.loads(response.json()["outputs"][0]["outputs"][0]["results"]["text"]["data"]["text"])
 
 
 result = get_macros("name: Atul, age: 21, height: 172cm, weight: 80kg, activity level: moderate","fat loss")
-print(result)
